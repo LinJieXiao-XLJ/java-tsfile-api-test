@@ -82,8 +82,7 @@ public class ITsFileReaderAndITsFileWriter {
                         Arrays.asList(
                                 TSDataType.STRING, TSDataType.STRING, TSDataType.INT32, TSDataType.BOOLEAN));
         for (int row = 0; row < 5; row++) {
-            long timestamp = row;
-            tablet.addTimestamp(row, timestamp);
+            tablet.addTimestamp(row, row);
             tablet.addValue(row, "tag1", "tag1_value_1");
             tablet.addValue(row, "tag2", "tag2_value_1");
             tablet.addValue(row, "s1", row);
@@ -91,8 +90,7 @@ public class ITsFileReaderAndITsFileWriter {
             // tablet.addValue(row, "s2", true);
         }
         for (int row = 5; row < 10; row++) {
-            long timestamp = row;
-            tablet.addTimestamp(row, timestamp);
+            tablet.addTimestamp(row, row);
 
             // tag1 column
             tablet.addValue(row, 0, "tag1_value_2");
@@ -132,7 +130,7 @@ public class ITsFileReaderAndITsFileWriter {
             for (int column = 1; column <= 5; column++) {
                 sj.add(metadata.getColumnName(column) + "(" + metadata.getColumnType(column) + ") ");
             }
-            System.out.println(sj.toString());
+            System.out.println(sj);
             while (resultSet.next()) {
                 // columnIndex starts from 1
                 // Time tag1 tag2 s1 s2
@@ -147,8 +145,7 @@ public class ITsFileReaderAndITsFileWriter {
                                 .add(tag1)
                                 .add(tag2)
                                 .add(s1Field + "")
-                                .add(s2Field + "")
-                                .toString());
+                                .add(s2Field + ""));
             }
         } catch (Exception e) {
             LOGGER.error("meet error in TsFileRead ", e);
