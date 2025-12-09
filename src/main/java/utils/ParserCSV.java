@@ -15,37 +15,6 @@ import java.util.List;
  * 简单的CSV解析器，不依赖外部库
  */
 public class ParserCSV {
-    
-    /**
-     * 解析CSV文件，返回Object[]的迭代器（从类路径加载）
-     * @param filepath 文件路径（类路径相对路径）
-     * @param delimiter 分隔符
-     * @return Object[]的迭代器
-     * @throws IOException IO异常
-     */
-    public Iterator<Object[]> loadFromClasspath(String filepath, char delimiter) throws IOException {
-        // 获取资源文件输入流
-        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(filepath);
-        if (inputStream == null) {
-            throw new IOException("找不到文件: " + filepath);
-        }
-        
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-        return parseReader(reader, delimiter);
-    }
-    
-    /**
-     * 解析CSV文件，返回Object[]的迭代器（从文件系统路径加载）
-     * @param filepath 文件系统路径
-     * @param delimiter 分隔符
-     * @return Object[]的迭代器
-     * @throws IOException IO异常
-     */
-    public Iterator<Object[]> loadFromFilesystem(String filepath, char delimiter) throws IOException {
-        BufferedReader reader = Files.newBufferedReader(Paths.get(filepath));
-        return parseReader(reader, delimiter);
-    }
-    
     /**
      * 解析CSV文件，返回Object[]的迭代器（从文件系统路径加载）
      *
@@ -84,7 +53,6 @@ public class ParserCSV {
         List<Object[]> testCases = new ArrayList<>();
         
         String line;
-        boolean isFirstLine = true;
         
         // 逐行读取文件
         while ((line = reader.readLine()) != null) {

@@ -14,7 +14,6 @@ import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.apache.tsfile.read.query.dataset.ResultSetMetadata;
 import org.apache.tsfile.read.v4.ITsFileReader;
 import org.apache.tsfile.read.v4.TsFileReaderBuilder;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.v4.ITsFileWriter;
 import org.apache.tsfile.write.v4.TsFileWriterBuilder;
