@@ -47,7 +47,7 @@ public class ITsFileReaderAndITsFileWriter {
     private static final Logger LOGGER = LoggerFactory.getLogger(ITsFileReaderAndITsFileWriter.class);
 
     public static void main(String[] args) throws IOException {
-        String path = "data/table.tsfile";
+        String path = "data/tsfile/table.tsfile";
         File f = FSFactoryProducer.getFSFactory().getFile(path);
         if (f.exists()) {
             Files.delete(f.toPath());

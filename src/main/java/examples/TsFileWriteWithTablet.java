@@ -29,7 +29,7 @@ public class TsFileWriteWithTablet {
 
     public static void main(String[] args) {
         try {
-            String path = "data/tree.tsfile";
+            String path = "data/tsfile/tree.tsfile";
             File f = FSFactoryProducer.getFSFactory().getFile(path);
             if (f.exists()) {
                 Files.delete(f.toPath());
