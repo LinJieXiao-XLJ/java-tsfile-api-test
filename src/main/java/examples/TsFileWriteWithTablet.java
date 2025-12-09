@@ -53,10 +53,13 @@ public class TsFileWriteWithTablet {
                 measurementSchemas.add(new MeasurementSchema("m10", TSDataType.TIMESTAMP, TSEncoding.PLAIN));
 
                 // register nonAligned timeseries
-                tsFileWriter.registerTimeseries(new Path(deviceId), measurementSchemas);
+                for (IMeasurementSchema measurementSchema : measurementSchemas) {
+                    tsFileWriter.registerTimeseries(deviceId, measurementSchema);
+                }
 
                 // example 1
                 writeWithTablet(tsFileWriter, deviceId, measurementSchemas, 100, 0);
+                writeWithTablet(tsFileWriter, deviceId, measurementSchemas, 10, 10);
             }
         } catch (Exception e) {
             LOGGER.error("meet error in TsFileWrite with tablet", e);
