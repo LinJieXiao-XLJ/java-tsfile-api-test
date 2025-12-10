@@ -45,7 +45,4 @@ mvn surefire-report:report
 mvn clean package -DskipTests
 mvn test jacoco:report
 ```
-
-
-
-
+若需要屏蔽某些目录，可以在 pom.xml 文件中修改 jacoco的 excludes 标签

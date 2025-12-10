@@ -205,6 +205,11 @@ public class TestITsFileReader {
 
         // 等于
         queryWithFilter(filterBuilder.eq(columnNameList.get(0), "Tag1_Value_3"), 2);
+        queryWithFilter(filterBuilder.eq(columnNameList.get(1), "!@#"), 1);
+        queryWithFilter(filterBuilder.eq(columnNameList.get(1), "中国"), 1);
+        queryWithFilter(filterBuilder.eq(columnNameList.get(1), "ABC"), 1);
+        queryWithFilter(filterBuilder.eq(columnNameList.get(1), "12345"), 1);
+        queryWithFilter(filterBuilder.eq(columnNameList.get(1), "    "), 1);
 
         // 不等于
         queryWithFilter(filterBuilder.neq(columnNameList.get(0), "Tag1_Value_3"), 11);
@@ -229,10 +234,11 @@ public class TestITsFileReader {
 
         // 和
         queryWithFilter(filterBuilder.and(filterBuilder.gteq(columnNameList.get(0), "Tag1_Value_3"), filterBuilder.lteq(columnNameList.get(0), "Tag1_Value_5")), 6);
-        queryWithFilter(filterBuilder.and(filterBuilder.gteq(columnNameList.get(0), "Tag1_Value_3"), filterBuilder.lteq(columnNameList.get(1), "Tag2_Value_5")), 5);
+        queryWithFilter(filterBuilder.and(filterBuilder.gteq(columnNameList.get(0), "Tag1_Value_3"), filterBuilder.lteq(columnNameList.get(1), "Tag2_Value_5")), 7);
 
         // 或
         queryWithFilter(filterBuilder.or(filterBuilder.eq(columnNameList.get(0), "Tag1_Value_3"), filterBuilder.eq(columnNameList.get(0), "Tag1_Value_5")), 4);
+        queryWithFilter(filterBuilder.or(filterBuilder.eq(columnNameList.get(0), "Tag1_Value_3"), filterBuilder.eq(columnNameList.get(1), "Tag2_Value_5")), 3);
 
         // 否
         queryWithFilter(filterBuilder.not(filterBuilder.eq(columnNameList.get(0), "Tag1_Value_2")), 15);
@@ -244,12 +250,17 @@ public class TestITsFileReader {
         queryWithFilter(filterBuilder.notRegExp(columnNameList.get(0), "Tag1_Value_[23]"), 10);
 
         // 匹配符合通配符的内容
-        queryWithFilter(filterBuilder.like(columnNameList.get(0), "Tag1_Value__"), 13);
+        queryWithFilter(filterBuilder.like(columnNameList.get(0), "%"), 13);
 
         // 排除符合通配符的内容
         queryWithFilter(filterBuilder.notLike(columnNameList.get(0), "Tag1_Value__"), 0);
+
+
     }
 
+    /**
+     * 测试查询接口异常情况：query(String tableName, List<String> columnNames, long startTime, long endTime, Filter tagFilter)
+     */
     @Test
     public void testQuery2Exception() {
         TagFilterBuilder filterBuilder = new TagFilterBuilder(tableSchema);
@@ -257,14 +268,14 @@ public class TestITsFileReader {
         String columnName1 = "nonExistColumn";
         try {
             filterBuilder.eq(columnName1, "Tag1_Value_3");
-            assert false : "没有报错";
+            assert false : "预期报错但是没有报错";
         } catch (IllegalArgumentException e) {
             assert e.getMessage().equals("Column '" + columnName1 + "' is not a tag column") : "实际报错与预期不一致，预期：Column '" + columnName1 + "' is not a tag column，实际：" + e.getMessage();
         }
         String columnName2 = "nonExistColumn";
         try {
             filterBuilder.not(filterBuilder.eq(columnName2, "Tag1_Value_2"));
-            assert false : "没有报错";
+            assert false : "预期报错但是没有报错";
         } catch (IllegalArgumentException e) {
             assert e.getMessage().equals("Column '" + columnName2 + "' is not a tag column") : "实际报错与预期不一致，预期：Column '" + columnName2 + "' is not a tag column，实际：" + e.getMessage();
         }
@@ -273,16 +284,58 @@ public class TestITsFileReader {
         String columnName3 = columnNameList.get(columnNameList.size() - 1);
         try {
             filterBuilder.eq(columnName3, "");
-            assert false : "没有报错";
+            assert false : "预期报错但是没有报错";
         } catch (IllegalArgumentException e) {
             assert e.getMessage().equals("Column '" + columnName3 + "' is not a tag column") : "实际报错与预期不一致，预期：Column '" + columnName3 + "' is not a tag column，实际：" + e.getMessage();
         }
+
+        // 3. value 或 Pattern 为空
+        try {
+            filterBuilder.eq(columnNameList.get(0), null);
+            assert false : "预期报错但是没有报错";
+        } catch (NullPointerException e) {
+            assert e.getMessage().equals("constant cannot be null") : "实际报错与预期不一致，预期：constant cannot be null，实际：" + e.getMessage();
+        }
+        try {
+            filterBuilder.betweenAnd(columnNameList.get(0), null, "Tag1_Value_2");
+            assert false : "预期报错但是没有报错";
+        } catch (NullPointerException e) {
+            assert e.getMessage().equals("min cannot be null") : "实际报错与预期不一致，预期：min cannot be null，实际：" + e.getMessage();
+        }
+        try {
+            filterBuilder.betweenAnd(columnNameList.get(0), "Tag1_Value_2", null);
+            assert false : "预期报错但是没有报错";
+        } catch (NullPointerException e) {
+            assert e.getMessage().equals("max cannot be null") : "实际报错与预期不一致，预期：max cannot be null，实际：" + e.getMessage();
+        }
+
+        // 4. filter为null
+        try {
+            filterBuilder.and(null, filterBuilder.eq(columnNameList.get(0), "Tag1_Value_2"));
+            assert false : "预期报错但是没有报错";
+        } catch (NullPointerException e) {
+            assert e.getMessage().equals("left cannot be null") : "实际报错与预期不一致，预期：left cannot be null，实际：" + e.getMessage();
+        }
+        try {
+            filterBuilder.and(filterBuilder.eq(columnNameList.get(0), "Tag1_Value_2"), null);
+            assert false : "预期报错但是没有报错";
+        } catch (NullPointerException e) {
+            assert e.getMessage().equals("right cannot be null") : "实际报错与预期不一致，预期：right cannot be null，实际：" + e.getMessage();
+        }
+        try {
+            filterBuilder.not(null);
+            assert false : "预期报错但是没有报错";
+        } catch (NullPointerException e) {
+            assert e.getMessage().equals("filter cannot be null") : "实际报错与预期不一致，预期：filter cannot be null，实际：" + e.getMessage();
+        }
+
+
     }
 
-    private void queryWithFilter(Object filter, int expectRowNum) throws IOException, ReadProcessException, NoTableException, NoMeasurementException {
+    private void queryWithFilter(Filter filter, int expectRowNum) throws IOException, ReadProcessException, NoTableException, NoMeasurementException {
         int actualRowNum = 0;
         try (ITsFileReader reader = new TsFileReaderBuilder().file(f).build();
-             ResultSet resultSet = reader.query(tableName, columnNameList, Long.MIN_VALUE, Long.MAX_VALUE, (Filter) filter)) {
+             ResultSet resultSet = reader.query(tableName, columnNameList, Long.MIN_VALUE, Long.MAX_VALUE, filter)) {
             ResultSetMetadata metadata = resultSet.getMetadata();
             // 验证 Time 列的元数据
             assert metadata.getColumnName(1).equals("Time");
