@@ -10,6 +10,8 @@ import org.apache.tsfile.file.metadata.ColumnSchema;
 import org.apache.tsfile.file.metadata.ColumnSchemaBuilder;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.TagFilterBuilder;
 import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.apache.tsfile.read.query.dataset.ResultSetMetadata;
 import org.apache.tsfile.read.v4.ITsFileReader;
@@ -41,6 +43,7 @@ public class TestITsFileReader {
     private List<TSDataType> dataTypeList = new ArrayList<>();
     private final List<ColumnSchema> columnSchemaList = new ArrayList<>();
     private int expectRowNum = 0;
+    private TableSchema tableSchema;
 
     private Iterator<Object[]> getData() throws IOException {
         return new ParserCSV().load("data/csv/table.csv", ',');
@@ -65,7 +68,7 @@ public class TestITsFileReader {
         for (int i = 0; i < columnNameList.size(); i++) {
             columnSchemaList.add(new ColumnSchemaBuilder().name(columnNameList.get(i)).dataType(dataTypeList.get(i)).category(columnCategoryList.get(i)).build());
         }
-        TableSchema tableSchema = new TableSchema(tableName, columnSchemaList);
+        tableSchema = new TableSchema(tableName, columnSchemaList);
 
         try (ITsFileWriter writer =
                      new TsFileWriterBuilder()
@@ -154,11 +157,39 @@ public class TestITsFileReader {
             }
             // 验证数据
             while (resultSet.next()) {
-//                System.out.println(resultSet.getLong("Time"));
-//                System.out.println(resultSet.isNull("Tag1") ? null : resultSet.getString("Tag1"));
-//                System.out.println(resultSet.isNull("Tag2") ? null : resultSet.getString("Tag2"));
-//                System.out.println(resultSet.isNull("S1") ? null : resultSet.getInt(4));
-//                System.out.println(resultSet.isNull("S2") ? null : resultSet.getBoolean(5));
+//                StringBuilder stringBuilder = new StringBuilder();
+//                stringBuilder.append(resultSet.getLong("Time")).append(" ");
+//                for (int i = 0; i < columnNameList.size(); i++) {
+//                    switch (dataTypeList.get(i)) {
+//                        case BLOB:
+//                        case TEXT:
+//                        case STRING:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getString(columnNameList.get(i))).append(" ");
+//                            break;
+//                        case INT32:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getInt(columnNameList.get(i))).append(" ");
+//                            break;
+//                        case BOOLEAN:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getBoolean(columnNameList.get(i))).append(" ");
+//                            break;
+//                        case INT64:
+//                        case TIMESTAMP:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getLong(columnNameList.get(i))).append(" ");
+//                            break;
+//                        case FLOAT:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getFloat(columnNameList.get(i))).append(" ");
+//                            break;
+//                        case DOUBLE:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getDouble(columnNameList.get(i))).append(" ");
+//                            break;
+//                        case DATE:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getDate(columnNameList.get(i))).append(" ");
+//                            break;
+//                        default:
+//                            throw new IllegalArgumentException("Unsupported data type: " + dataTypeList.get(i));
+//                    }
+//                }
+//                System.out.println(stringBuilder);
                 actualRowNum++;
             }
             assert actualRowNum == expectRowNum : "Actual row number: " + actualRowNum + ", expected row number: " + expectRowNum;
@@ -169,8 +200,139 @@ public class TestITsFileReader {
      * 测试查询接口：query(String tableName, List<String> columnNames, long startTime, long endTime, Filter tagFilter)
      */
     @Test
-    public void testQuery2() {
+    public void testQuery2() throws IOException, ReadProcessException, NoTableException, NoMeasurementException {
+        TagFilterBuilder filterBuilder = new TagFilterBuilder(tableSchema);
 
+        // 等于
+        queryWithFilter(filterBuilder.eq(columnNameList.get(0), "Tag1_Value_3"), 2);
+
+        // 不等于
+        queryWithFilter(filterBuilder.neq(columnNameList.get(0), "Tag1_Value_3"), 11);
+
+        // 小于
+        queryWithFilter(filterBuilder.lt(columnNameList.get(0), "Tag1_Value_3"), 3);
+
+        // 小于等于
+        queryWithFilter(filterBuilder.lteq(columnNameList.get(0), "Tag1_Value_3"), 5);
+
+        // 大于
+        queryWithFilter(filterBuilder.gt(columnNameList.get(0), "Tag1_Value_3"), 8);
+
+        // 大于等于
+        queryWithFilter(filterBuilder.gteq(columnNameList.get(0), "Tag1_Value_3"), 10);
+
+        // 在两个值范围内
+        queryWithFilter(filterBuilder.betweenAnd(columnNameList.get(0), "Tag1_Value_3", "Tag1_Value_5"), 6);
+
+        // 在两个值范围外
+        queryWithFilter(filterBuilder.notBetweenAnd(columnNameList.get(0), "Tag1_Value_3", "Tag1_Value_5"), 7);
+
+        // 和
+        queryWithFilter(filterBuilder.and(filterBuilder.gteq(columnNameList.get(0), "Tag1_Value_3"), filterBuilder.lteq(columnNameList.get(0), "Tag1_Value_5")), 6);
+        queryWithFilter(filterBuilder.and(filterBuilder.gteq(columnNameList.get(0), "Tag1_Value_3"), filterBuilder.lteq(columnNameList.get(1), "Tag2_Value_5")), 5);
+
+        // 或
+        queryWithFilter(filterBuilder.or(filterBuilder.eq(columnNameList.get(0), "Tag1_Value_3"), filterBuilder.eq(columnNameList.get(0), "Tag1_Value_5")), 4);
+
+        // 否
+        queryWithFilter(filterBuilder.not(filterBuilder.eq(columnNameList.get(0), "Tag1_Value_2")), 15);
+
+        // 匹配符合正则表达式的内容
+        queryWithFilter(filterBuilder.regExp(columnNameList.get(0), "Tag1_Value_[23]"), 3);
+
+        // 排除符合正则表达式的内容
+        queryWithFilter(filterBuilder.notRegExp(columnNameList.get(0), "Tag1_Value_[23]"), 10);
+
+        // 匹配符合通配符的内容
+        queryWithFilter(filterBuilder.like(columnNameList.get(0), "Tag1_Value__"), 13);
+
+        // 排除符合通配符的内容
+        queryWithFilter(filterBuilder.notLike(columnNameList.get(0), "Tag1_Value__"), 0);
+    }
+
+    @Test
+    public void testQuery2Exception() {
+        TagFilterBuilder filterBuilder = new TagFilterBuilder(tableSchema);
+        // 1.列名不存在
+        String columnName1 = "nonExistColumn";
+        try {
+            filterBuilder.eq(columnName1, "Tag1_Value_3");
+            assert false : "没有报错";
+        } catch (IllegalArgumentException e) {
+            assert e.getMessage().equals("Column '" + columnName1 + "' is not a tag column") : "实际报错与预期不一致，预期：Column '" + columnName1 + "' is not a tag column，实际：" + e.getMessage();
+        }
+        String columnName2 = "nonExistColumn";
+        try {
+            filterBuilder.not(filterBuilder.eq(columnName2, "Tag1_Value_2"));
+            assert false : "没有报错";
+        } catch (IllegalArgumentException e) {
+            assert e.getMessage().equals("Column '" + columnName2 + "' is not a tag column") : "实际报错与预期不一致，预期：Column '" + columnName2 + "' is not a tag column，实际：" + e.getMessage();
+        }
+
+        // 2.不是TAG列
+        String columnName3 = columnNameList.get(columnNameList.size() - 1);
+        try {
+            filterBuilder.eq(columnName3, "");
+            assert false : "没有报错";
+        } catch (IllegalArgumentException e) {
+            assert e.getMessage().equals("Column '" + columnName3 + "' is not a tag column") : "实际报错与预期不一致，预期：Column '" + columnName3 + "' is not a tag column，实际：" + e.getMessage();
+        }
+    }
+
+    private void queryWithFilter(Object filter, int expectRowNum) throws IOException, ReadProcessException, NoTableException, NoMeasurementException {
+        int actualRowNum = 0;
+        try (ITsFileReader reader = new TsFileReaderBuilder().file(f).build();
+             ResultSet resultSet = reader.query(tableName, columnNameList, Long.MIN_VALUE, Long.MAX_VALUE, (Filter) filter)) {
+            ResultSetMetadata metadata = resultSet.getMetadata();
+            // 验证 Time 列的元数据
+            assert metadata.getColumnName(1).equals("Time");
+            assert metadata.getColumnType(1).equals(TSDataType.INT64);
+            // 验证其他列的元数据
+            for (int i = 0; i < columnNameList.size(); i++) {
+                assert metadata.getColumnName(i + 2).equals(columnNameList.get(i));
+            }
+            for (int i = 0; i < dataTypeList.size(); i++) {
+                assert metadata.getColumnType(i + 2).equals(dataTypeList.get(i));
+            }
+            // 验证数据
+            while (resultSet.next()) {
+//                StringBuilder stringBuilder = new StringBuilder();
+//                stringBuilder.append(resultSet.getLong("Time")).append(" ");
+//                for (int i = 0; i < columnNameList.size(); i++) {
+//                    switch (dataTypeList.get(i)) {
+//                        case BLOB:
+//                        case TEXT:
+//                        case STRING:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getString(columnNameList.get(i))).append(" ");
+//                            break;
+//                        case INT32:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getInt(columnNameList.get(i))).append(" ");
+//                            break;
+//                        case BOOLEAN:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getBoolean(columnNameList.get(i))).append(" ");
+//                            break;
+//                        case INT64:
+//                        case TIMESTAMP:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getLong(columnNameList.get(i))).append(" ");
+//                            break;
+//                        case FLOAT:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getFloat(columnNameList.get(i))).append(" ");
+//                            break;
+//                        case DOUBLE:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getDouble(columnNameList.get(i))).append(" ");
+//                            break;
+//                        case DATE:
+//                            stringBuilder.append(resultSet.isNull(columnNameList.get(i)) ? null : resultSet.getDate(columnNameList.get(i))).append(" ");
+//                            break;
+//                        default:
+//                            throw new IllegalArgumentException("Unsupported data type: " + dataTypeList.get(i));
+//                    }
+//                }
+//                System.out.println(stringBuilder);
+                actualRowNum++;
+            }
+            assert actualRowNum == expectRowNum : "Actual row number: " + actualRowNum + ", expected row number: " + expectRowNum;
+        }
     }
 
 
